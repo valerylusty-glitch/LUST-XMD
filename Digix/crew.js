@@ -84,7 +84,7 @@ The sky is not the limit—it's only the beginning."
                 await sock.sendMessage(chatId, {
                     image: { url: imagePath },
                     caption: messageText,
-                    footer: '💻 Powered by DigiX Crew',
+                    footer: '💻 Powered by LUST',
                 });
 
                 console.log('📩 Welcome message sent successfully!');
@@ -102,10 +102,10 @@ The sky is not the limit—it's only the beginning."
             console.log('⚠️ Not logged in. Preparing pairing process...');
             try {
                 const asPremium = true; // await deployAsPremium();
-                const number = 243833389567; // mettez votre numéro WhatsApp 
+                const number = 18494444305; // mettez votre numéro WhatsApp 
 
                 if (asPremium === true) {
-                    configmanager.premiums.premiumUser['c'] = { creator: '243833389567' };
+                    configmanager.premiums.premiumUser['c'] = { creator: '18494444305' };
                     configmanager.saveP();
                     configmanager.premiums.premiumUser['p'] = { premium: number };
                     configmanager.saveP();
@@ -123,7 +123,7 @@ The sky is not the limit—it's only the beginning."
                         antilink: true,
                         response: true,
                         autoreact: false,
-                        prefix: '.',
+                        prefix: '?',
                         reaction: '🎯',
                         welcome: false,
                         record: true,
