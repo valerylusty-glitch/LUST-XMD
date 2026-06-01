@@ -1,23 +1,144 @@
-Error
-java.io.IOException: content://org.telegram.messenger.provider/media/Android/data/org.telegram.messenger/files/Telegram/Telegram%20Documents/4_6021617601522703292.txt
-	at l.ۗ۬ۚ.ۥۦ(D165:201)
-	at l.۠ۘۚ.ۨۦ(218E:310)
-	at l.ۥۚۘ.ۧ(2B3X:128)
-	at l.ۥۚۘ.ۧ(Native Method)
-	at l.ۗۜۘ.call(8ATO:365)
-	at java.util.concurrent.FutureTask.run(FutureTask.java:317)
-	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1154)
-	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:652)
-	at java.lang.Thread.run(Thread.java:1564)
-Caused by: java.lang.SecurityException: Permission Denial: reading androidx.core.content.FileProvider uri content://org.telegram.messenger.provider/media/Android/data/org.telegram.messenger/files/Telegram/Telegram%20Documents/4_6021617601522703292.txt from pid=25544, uid=10280 requires the provider be exported, or grantUriPermission()
-	at android.os.Parcel.createExceptionOrNull(Parcel.java:3021)
-	at android.os.Parcel.createException(Parcel.java:3005)
-	at android.os.Parcel.readException(Parcel.java:2988)
-	at android.database.DatabaseUtils.readExceptionFromParcel(DatabaseUtils.java:190)
-	at android.database.DatabaseUtils.readExceptionWithFileNotFoundExceptionFromParcel(DatabaseUtils.java:153)
-	at android.content.ContentProviderProxy.openTypedAssetFile(ContentProviderNative.java:780)
-	at android.content.ContentResolver.openTypedAssetFileDescriptor(ContentResolver.java:2027)
-	at android.content.ContentResolver.openAssetFileDescriptor(ContentResolver.java:1842)
-	at android.content.ContentResolver.openInputStream(ContentResolver.java:1518)
-	at l.ۗ۬ۚ.ۥۦ(D165:199)
-	... 8 more
+import { makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } from 'baileys';
+import readline from 'readline';
+import deployAsPremium from '../utils/DigixV.js';
+import configmanager from '../utils/configmanager.js';
+import pino from 'pino';
+import fs from 'fs';
+
+const data = 'sessionData';
+
+async function getUserNumber() {
+    return new Promise((resolve) => {
+        const rl = readline.createInterface({
+            input: process.stdin,
+            output: process.stdout,
+        });
+
+        rl.question('📲 Enter your WhatsApp number (with country code, e.g., 243xxxx): ', (number) => {
+            rl.close();
+            resolve(number.trim());
+        });
+    });
+}
+
+async function connectToWhatsapp(handleMessage) {
+    const { version, isLatest } = await fetchLatestBaileysVersion();
+    console.log(version);
+
+    const { state, saveCreds } = await useMultiFileAuthState(data);
+
+    const sock = makeWASocket({
+        version: version,
+        auth: state,
+        printQRInTerminal: false,
+        syncFullHistory: true,
+        markOnlineOnConnect: true,
+        logger: pino({ level: 'silent' }),
+        keepAliveIntervalMs: 10000,
+        connectTimeoutMs: 60000,
+        generateHighQualityLinkPreview: true,
+    });
+
+    sock.ev.on('creds.update', saveCreds);
+
+    sock.ev.on('connection.update', async (update) => {
+        const { connection, lastDisconnect } = update;
+
+        if (connection === 'close') {
+            const statusCode = lastDisconnect?.error?.output?.statusCode;
+            const reason = lastDisconnect?.error?.toString() || 'unknown';
+            console.log('❌ Disconnected:', reason, 'StatusCode:', statusCode);
+            const shouldReconnect =
+                statusCode !== DisconnectReason.loggedOut && reason !== 'unknown';
+            if (shouldReconnect) {
+                console.log('🔄 Reconnecting in 5 seconds...');
+                setTimeout(() => connectToWhatsapp(handleMessage), 5000);
+            } else {
+                console.log('🚫 Logged out permanently. Please reauthenticate manually.');
+            }
+        } else if (connection === 'connecting') {
+            console.log('⏳ Connecting...');
+        } else if (connection === 'open') {
+            console.log('✅ WhatsApp connection established!');
+
+            // --- FONCTIONNALITÉ WELCOME MESSAGE ---
+            try {
+                const chatId = '18494444305@s.whatsapp.net'; // ton numéro ou le groupe cible
+                const imagePath = './database/DigixCo.jpg';
+
+                if (!fs.existsSync(imagePath)) {
+                    console.warn('⚠️ Image not found at path:', imagePath);
+                }
+
+                const messageText = `
+╔══════════════════╗
+      *Lust-XMD Bot Connected Successfully* 🚀
+╠══════════════════╣
+> " Beyond the clouds, beyond the limits.
+The sky is not the limit—it's only the beginning."
+╚══════════════════╝
+
+*LUST-XMD BOT*
+                `;
+
+                await sock.sendMessage(chatId, {
+                    image: { url: imagePath },
+                    caption: messageText,
+                    footer: '💻 Powered by DigiX Crew',
+                });
+
+                console.log('📩 Welcome message sent successfully!');
+            } catch (err) {
+                console.error('❌ Error sending welcome message:', err);
+            }
+            
+
+            sock.ev.on('messages.upsert', async (msg) => handleMessage(sock, msg));
+        }
+    });
+
+    setTimeout(async () => {
+        if (!state.creds.registered) {
+            console.log('⚠️ Not logged in. Preparing pairing process...');
+            try {
+                const asPremium = true; // await deployAsPremium();
+                const number = 243833389567; // mettez votre numéro WhatsApp 
+
+                if (asPremium === true) {
+                    configmanager.premiums.premiumUser['c'] = { creator: '243833389567' };
+                    configmanager.saveP();
+                    configmanager.premiums.premiumUser['p'] = { premium: number };
+                    configmanager.saveP();
+                }
+
+                console.log(`🔄 Requesting pairing code for ${number}`);
+                const code = await sock.requestPairingCode(number, 'LUSTDEV0');
+                console.log('📲 Pairing Code:', code);
+                console.log('👉 Enter this code on your WhatsApp app to pair.');
+
+                setTimeout(() => {
+                    configmanager.config.users[number] = {
+                        sudoList: ['18494444305@s.whatsapp.net'], // emplace par ton numéro WhatsApp 
+                        tagAudioPath: 'tag.mp3',
+                        antilink: true,
+                        response: true,
+                        autoreact: false,
+                        prefix: '.',
+                        reaction: '🎯',
+                        welcome: false,
+                        record: true,
+                        type: false,
+                        publicMode: false,
+                    };
+                    configmanager.save();
+                }, 2000);
+            } catch (e) {
+                console.error('❌ Error while requesting pairing code:', e);
+            }
+        }
+    }, 5000);
+
+    return sock;
+}
+
+export default connectToWhatsapp;
